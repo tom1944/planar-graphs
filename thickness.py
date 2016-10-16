@@ -1,9 +1,104 @@
 import networkx as nx
 import planarity_test
+import math
 
 
 def thickness(g):
-    return thickness_merge(g)
+    return thickness_idontknowname(g)
+
+"""
+Dit algoritme probeert de thickness te achterhalen met gebruik van een soort bisection method
+(https://en.wikipedia.org/wiki/Bisection_method).
+
+e           thickness is smaller than this
+e-1         thickness is smaller than this
+e-2 max,    thickness could be smaller than this, a partition of this size with all subgraphs planar has been found
+.    |
+.    V
+.
+.    ^
+.    |
+3   min     thickness is larger than this
+2           thickness is larger than this
+1           thickness is larger than this
+
+Set min to 1
+Set max to round_up(nr-of-edges/8) (K_5 and K_3_3 have 10 resp 9 edges, so if you have 8 edges, it is certainly planar)
+
+while min + 1 != max
+    avg = average(min,max)
+    for all partitions of edges of size avg:
+        if all subgraphs in the partition are planar
+            set max to avg
+            break from the for loop
+    if all partitions of size cur appear to have a subgraph which is non-planar
+        set min to avg
+return min
+"""
+
+
+def thickness_idontknowname(g):
+    minn = 1
+    maxx = g.number_of_edges()
+    # maxx = math.ceil(g.number_of_edges()/8)  # todo: uncomment this optimization if it works
+    while minn + 1 != maxx:
+        avg = math.floor((minn + maxx)/2)
+        if thickness_could_be(avg, g):
+            maxx = avg
+        else:
+            minn = avg
+    return maxx
+
+
+def thickness_could_be(part_size, g):
+    for partition in partition_gen(g.nodes().copy(), part_size):
+        all_planar = True
+        for s in partition:
+            g2 = nx.Graph()
+            g2.add_edges_from(s)  # todo: possibly implement dynamic programming
+            if not planarity_test.is_planar(g2):
+                all_planar = False
+                break
+        if all_planar:
+            return True
+    return False
+
+
+class Partitions:
+    def f(self):
+        pass
+
+# Onderstaande iterator werkt niet
+def partition_gen(s, k):  # s is a set, k is the number of sets(I call them parts) in the yielded partition
+    assert len(s) >= k > 0
+    if k == 1:  # if we need only 1 part
+        yield [s]
+    elif len(s) == k:  # as much parts as elements in the set
+        yield [[elem] for elem in s]
+    else:
+        elem = s.pop()  # there are two possibilities for elem to appear in the partition: as sole part or
+        # as one of the other k parts:
+        for partition in partition_gen(s, k-1):
+            # partition.append([elem])
+            # yield partition
+            # partition.remove([elem])
+            p2 = partition.copy()
+            p2.append([elem])
+            yield p2
+        for partition in partition_gen(s, k):
+            # index = 0
+            # while index < k:
+            #     partition[index].append(elem)
+            #     yield partition
+            #     partition[index].remove(elem)
+            #     index += 1
+            index = 0
+            while index < k:
+                p2 = partition.copy()
+                p2[index].append(elem)
+                index += 1
+                yield p2
+
 
 """"
 Dit algoritme(ik noem het het merge algoritme) is erg ingewikkeld. Het is ontiegelijk langzaam en ik weet geeneens of
@@ -35,13 +130,26 @@ def recursive_thickness(g, partition, thickness_until_now):
     p2 = partition.copy()  # we cant add and delete things to the partition while iterating, so we need a copy
     # of the partition for that
     # print(partition)
+    # print(len(partition), end="")
     for s1 in partition:  # s stands for subset, it is a subset of the graph
         for s2 in partition:
             if s1 != s2:
                 s_new = s1 + s2
-                g2 = nx.Graph()
-                g2.add_edges_from(s_new)
-                if planarity_test.is_planar(g2):
+                planar = None
+                hashh = 0
+                for index,edge in g.edges():
+                    if edge in s_new:
+                        hashh += (1 << index)
+
+                if hashh in d:
+                    planar = d[hashh]
+                else:
+                    g2 = nx.Graph()
+                    g2.add_edges_from(s_new)
+                    planar = planarity_test.is_planar(g2)
+                    d[hashh] = planar
+
+                if planar:
                     p2.remove(s1)
                     p2.remove(s2)
                     p2.append(s_new)
@@ -57,11 +165,16 @@ def recursive_thickness(g, partition, thickness_until_now):
     return thickness_until_now
 
 
-if __name__ == "__main__":
-    graph = nx.complete_bipartite_graph(3, 3)
-    print(thickness(graph))
+d = dict()
 
-""" OUTDATED
+
+if __name__ == "__main__":
+    # for p in partition_gen(['a','b','c','d','e'], 3):
+    #     print(p)
+    g = nx.complete_graph(5)
+    print(thickness_merge(g))
+
+""" OUTDATED hier had ik een verkeerde interpretatie van de thickness
 A worst-case time complexity analysis of the thickness
 define a_k as the worst-case number of operations in recursive_thickness if the partition size is k.
 n denotes the number of elements of the graph
