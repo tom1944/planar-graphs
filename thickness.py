@@ -1,11 +1,20 @@
 import networkx as nx
+import planarity_test
+
+
+def thickness(g):
+    return thickness_merge(g)
 
 """"
-algoritme om te gebruiken:
-Maak een volledige partitie P van de nodes.
+Dit algoritme(ik noem het het merge algoritme) is erg ingewikkeld. Het is ontiegelijk langzaam en ik weet geeneens of
+het werkt voor grafen met een thickness groter dan 1. Misschien zitten er fouten in het algoritme of in de implementatie
+Het idee van dit algoritme was om een volledige partitie van de edges te maken en ze voorzichtig samen te voegen.
+
+merge algoritme:
+Maak een volledige partitie P van de edges.
 voor alle paren deelverzamelingen:
     merge ze
-    als de subgrafen van alle deelverzamelingen in de partitie nog steeds planair zijn
+    als de subgraaf gegenereerd door de nieuwe subset van edges planair is
         ga de recursie in
     anders
         unmerge ze
@@ -13,28 +22,33 @@ voor alle paren deelverzamelingen:
 """
 
 
-def thickness(g):
-    if is_planar(g):
+def thickness_merge(g):
+    if planarity_test.is_planar(g):
         return 1
 
-    partition = [[node] for node in g.nodes]
+    partition = [[edge] for edge in g.edges()]
     thickness_until_now = len(partition)  # the cardinality of the partition
-    return recursive_thickness(partition, thickness_until_now)
+    return recursive_thickness(g, partition, thickness_until_now)
 
 
-def recursive_thickness(partition, thickness_until_now):
+def recursive_thickness(g, partition, thickness_until_now):
+    p2 = partition.copy()  # we cant add and delete things to the partition while iterating, so we need a copy
+    # of the partition for that
+    # print(partition)
     for s1 in partition:  # s stands for subset, it is a subset of the graph
         for s2 in partition:
             if s1 != s2:
                 s_new = s1 + s2
-                if is_planar(g.subgraph(s_new)):
-                    partition.remove(s1)
-                    partition.remove(s2)
-                    partition.append(s_new)
-                    thickness_until_now = recursive_thickness(partition, thickness_until_now)
-                    partition.remove(s_new)
-                    partition.append(s1)
-                    partition.append(s2)
+                g2 = nx.Graph()
+                g2.add_edges_from(s_new)
+                if planarity_test.is_planar(g2):
+                    p2.remove(s1)
+                    p2.remove(s2)
+                    p2.append(s_new)
+                    thickness_until_now = recursive_thickness(g, p2, thickness_until_now)
+                    p2.remove(s_new)
+                    p2.append(s1)
+                    p2.append(s2)
                 else:
                     thickness_until_now = min(thickness_until_now, len(partition))  # Omdat we al hebben gecheckt of de
                     # graaf panair is, weten we zeker dat dit statement sowieso 1 keer uitgevoerd wordt.
@@ -43,30 +57,15 @@ def recursive_thickness(partition, thickness_until_now):
     return thickness_until_now
 
 
-# a stub, needs to be implemented, possibly in another file/module/unit
-def is_planar(g):
-    return False
-
-
-def test_thickness(g):
-    print("thickness: " + str(thickness(g)))
-
-
 if __name__ == "__main__":
-    print("hello world")
-    g = nx.Graph()
-    g.add_edge(1, 2)
-    g.add_edge(2,3)
-    g.add_edge(3,1)
-    g.add_edge(1,4)
-    nx.draw(g)
-    test_thickness(g)
+    graph = nx.complete_bipartite_graph(3, 3)
+    print(thickness(graph))
 
-"""
+""" OUTDATED
 A worst-case time complexity analysis of the thickness
 define a_k as the worst-case number of operations in recursive_thickness if the partition size is k.
 n denotes the number of elements of the graph
-planarity(i) denotes the complexity of the planarity check (is_planar) of a graph with i nodes
+planarity(i) denotes the complexity of the planarity check (planarity_test.is_planar) of a graph with i nodes
 
 We need to determine a recursive formula for a_k:
 
@@ -76,7 +75,7 @@ def recursive_thickness(partition, thickness_until_now):
             if s1 != s2:					=> condition is false in k out of k*k times,
 												does not contribute to the complexity
                 s_new = s1 + s2				=> n   (1)
-                if is_planar(g.subgraph(s_new)): => planarity(n) + n^4  (2)
+                if planarity_test.is_planar(g.subgraph(s_new)): => planarity(n) + n^4  (2)
                     partition.remove(s1)		=> k  (3)
                     partition.remove(s2)		=> k-1
                     partition.append(s_new)		=> 1
@@ -116,7 +115,7 @@ is an upper bound for this sequence
 Now we can determine the complexity of thickness:
 
 def thickness(g):
-    if is_planar(g):	=> planarity(n)
+    if planarity_test.is_planar(g):	=> planarity(n)
         return 1		=> 1
 
     partition = [[node] for node in g.nodes]	=> n
