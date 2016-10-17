@@ -5,129 +5,29 @@ import copy
 
 
 def thickness(g):
-    return thickness_idontknowname(g)
-
-"""
-Dit algoritme probeert de thickness te achterhalen met gebruik van een soort bisection method
-(https://en.wikipedia.org/wiki/Bisection_method).
-
-e           thickness is smaller than this
-e-1         thickness is smaller than this
-e-2 max,    thickness could be smaller than this, a partition of this size with all subgraphs planar has been found
-.    |
-.    V
-.
-.    ^
-.    |
-3   min     thickness is larger than this
-2           thickness is larger than this
-1           thickness is larger than this
-
-Set min to 1
-Set max to round_up(nr-of-edges/8) (K_5 and K_3_3 have 10 resp 9 edges, so if you have 8 edges, it is certainly planar)
-
-while min + 1 != max
-    avg = average(min,max)
-    for all partitions of edges of size avg:
-        if all subgraphs in the partition are planar
-            set max to avg
-            break from the for loop
-    if all partitions of size cur appear to have a subgraph which is non-planar
-        set min to avg
-return min
-"""
-
-
-def thickness_idontknowname(g):
-    minn = 1
-    maxx = g.number_of_edges()
-    # maxx = math.ceil(g.number_of_edges()/8)  # todo: uncomment this optimization if it works
-    while minn + 1 != maxx:
-        avg = math.floor((minn + maxx)/2)
-        if thickness_could_be(avg, g):
-            maxx = avg
-        else:
-            minn = avg
-    return maxx
-
-
-def thickness_could_be(part_size, g):
-    for partition in partition_gen(g.nodes().copy(), part_size):
-        all_planar = True
-        for s in partition:
-            g2 = nx.Graph()
-            g2.add_edges_from(s)  # todo: possibly implement dynamic programming
-            if not planarity_test.is_planar(g2):
-                all_planar = False
-                break
-        if all_planar:
-            return True
-    return False
-
-
-class Partitions:
-    def f(self):
-        pass
-
-
-# just to practice: determine all k-partitions of a set s
-def all_k_partitions_of(s, k):
-    assert len(s) >= k > 0
-    if k == 1:  # if we need only 1 part
-        return [[copy.deepcopy(s)]]
-    elif len(s) == k:  # as much parts as elements in the set
-        return [[[elem] for elem in s]]
-    else:
-        elem = s.pop()  # there are two possibilities for elem to appear in the partition: as sole part or
-        # as one of the other k parts:
-        result = []
-        for partition in all_k_partitions_of(s, k - 1):
-            partition.append([elem])
-            result.append(partition)
-        for partition in all_k_partitions_of(s, k):
-            for s2 in partition:
-                s2.append(elem)
-                result.append(copy.deepcopy(partition))
-                s2.remove(elem)
-        s.append(elem)
-        return result
-
-
-# Werkt! :D
-def partition_gen(s, k):  # s is a set, k is the number of sets(I call them parts) in the yielded partition
-    assert len(s) >= k > 0
-    if k == 1:  # if we need only 1 part
-        yield [copy.deepcopy(s)]
-    elif len(s) == k:  # as much parts as elements in the set
-        yield [[elem] for elem in s]
-    else:
-        elem = s.pop()  # there are two possibilities for elem to appear in the partition: as sole part or
-        # as one of the other k parts(see https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind#Recurrence_relation):
-        for partition in partition_gen(s, k-1):
-            partition.append([elem])
-            yield partition
-        for partition in partition_gen(s, k):
-            for s2 in partition:
-                s2.append(elem)
-                yield copy.deepcopy(partition)
-                s2.remove(elem)
-        s.append(elem)
-
+    return thickness_bisection(g)
 
 """"
-Dit algoritme(ik noem het het merge algoritme) is erg ingewikkeld. Het is ontiegelijk langzaam en ik weet geeneens of
-het werkt voor grafen met een thickness groter dan 1. Misschien zitten er fouten in het algoritme of in de implementatie
-Het idee van dit algoritme was om een volledige partitie van de edges te maken en ze voorzichtig samen te voegen.
+Thickness merge algoritme:
+Hieronder is het eerste algoritme dat wij hebben bedacht voor het bepalen van de thickness. De intuitie van dit
+algoritme is om een volledige partitie van de edges te maken en ze voorzichtig samen te voegen.
 
-merge algoritme:
+Een schets van het thickness merge algoritme:
 Maak een volledige partitie P van de edges.
-voor alle paren deelverzamelingen:
+voor alle paren deelverzamelingen in P:
     merge ze
     als de subgraaf gegenereerd door de nieuwe subset van edges planair is
         ga de recursie in
     anders
         unmerge ze
         thickness_until_now = min(thickness_until_now, size_of(P) )
+
+Alle paren subsets worden met elkaar gemerged. Dit gebeurt ook nog recursief. Hierdoor krijgen we een gigantische
+complexiteit. Uit een paar grove inschattingen die we op klad hebben gemaakt, schatten we in dat de complexiteit in
+de orde van e*(e!)^2(e^4 + planarity(n)) ligt, waarbij e het aantal edges is, n het aantal nodes en planarity(n) de
+complexiteit van het planarity_test algoritme bij n nodes is. Zodra de thickness van een graaf groter dan 1 is, is het
+met de implementatie van dit algoritme al praktisch onmogelijk om de thickness te bepalen. Het is daardoor ook
+onmogelijk om deze implementatie te testen.
 """
 
 
@@ -149,21 +49,9 @@ def recursive_thickness(g, partition, thickness_until_now):
         for s2 in partition:
             if s1 != s2:
                 s_new = s1 + s2
-                planar = None
-                hashh = 0
-                for index,edge in g.edges():
-                    if edge in s_new:
-                        hashh += (1 << index)
-
-                if hashh in d:
-                    planar = d[hashh]
-                else:
-                    g2 = nx.Graph()
-                    g2.add_edges_from(s_new)
-                    planar = planarity_test.is_planar(g2)
-                    d[hashh] = planar
-
-                if planar:
+                g2 = nx.Graph()
+                g2.add_edges_from(s_new)
+                if planarity_test.is_planar(g2):
                     p2.remove(s1)
                     p2.remove(s2)
                     p2.append(s_new)
@@ -178,11 +66,95 @@ def recursive_thickness(g, partition, thickness_until_now):
                     # het aantal nodes in de graaf.
     return thickness_until_now
 
+"""
+Thickness bisection algoritme:
+Dit algoritme probeert de thickness te achterhalen met gebruik van een methode die lijkt op de bisection method
+(https://en.wikipedia.org/wiki/Bisection_method).
 
-d = dict()
+e           thickness is smaller than this
+e-1         thickness is smaller than this
+e-2 max,    thickness could be smaller than this, a partition of this size with all subgraphs planar has been found
+.    |
+.    V
+.        <- avg
+.    ^
+.    |
+3   min     thickness is larger than this
+2           thickness is larger than this
+1           thickness is larger than this
+
+Een schets van het thickness bisection algoritme:
+Set min to 0
+Set max to round_up(nr-of-edges/8) (K_5 and K_3_3 have 10 resp 9 edges, so if you have 8 or less edges per subgraph,
+                                    it is certainly planar)
+while min + 1 != max
+    avg = average(min,max)
+    for all partitions of edges of size avg:
+        if all subgraphs in the partition are planar
+            set max to avg
+            break from the for loop
+    if all partitions of size cur appear to have a subgraph which is non-planar
+        set min to avg
+return max
+"""
 
 
-def stirling(n, k):
+def thickness_bisection(g):
+    if planarity_test.is_planar(g):  # shortcut if graph is planar
+        return 1
+
+    minn = 0
+    maxx = math.ceil(g.number_of_edges()/8)
+    while minn + 1 != maxx:
+        avg = math.floor((minn + maxx)/2)
+        if thickness_could_be(avg, g):
+            maxx = avg
+        else:
+            minn = avg
+    return maxx
+
+
+def thickness_could_be(part_size, g):
+    for partition in partition_gen(g.edges().copy(), part_size):
+        all_planar = True
+        for s in partition:
+            g2 = nx.Graph()
+            g2.add_edges_from(s)  # todo: possibly implement dynamic programming
+            if not planarity_test.is_planar(g2):
+                all_planar = False
+                break
+        if all_planar:
+            return True
+    return False
+
+"""
+Om alle k-partities van een verzameling te genereren, maken we gebruik van een pythongenerator. Het genereren van de
+partities gaat volgens dezelfde strategie als het bepalen van het stirlinggetal van de tweede soort, zie
+https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind#Recurrence_relation
+"""
+
+
+def partition_gen(s, k):  # s is a set, k is the number of sets(I call them parts) in the yielded partition
+    assert len(s) >= k > 0
+    if k == 1:  # if we need only 1 part
+        yield [copy.deepcopy(s)]
+    elif len(s) == k:  # if there are as much parts as elements in the set
+        yield [[elem] for elem in s]
+    else:
+        elem = s.pop()  # there are two possibilities for elem to appear in the partition: as sole part or
+        # as one of the other k parts:
+        for partition in partition_gen(s, k-1):
+            partition.append([elem])
+            yield partition
+        for partition in partition_gen(s, k):
+            for s2 in partition:
+                s2.append(elem)
+                yield copy.deepcopy(partition)
+                s2.remove(elem)
+        s.append(elem)
+
+
+def stirling(n, k):  # usefull to test the partition generator
     if n == 0 and k == 0:
         return 1
     elif n == 0 or k == 0:
@@ -191,15 +163,10 @@ def stirling(n, k):
         return k * stirling(n - 1, k) + stirling(n - 1, k - 1)
 
 if __name__ == "__main__":
-    for index, p in enumerate(partition_gen(['a','b','c','d','e'], 3)):
-        print(p)
-    # gr = nx.complete_graph(5)
-    # print(thickness_merge(gr))
-    # ll = all_k_partitions_of(['a','b','c','d','e'], 3)
-    # for pp in ll:
-    #     print(pp)
-    # print(len(ll))
-    # print(stirling(5, 3))
+    gr = nx.complete_bipartite_graph(2,3)
+    gr2 = nx.complete_graph(9)
+    print("hi")
+    print(thickness_bisection(gr2))
 
 
 """ OUTDATED hier had ik een verkeerde interpretatie van de thickness

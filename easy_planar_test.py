@@ -5,6 +5,8 @@ import matplotlib
 matplotlib.use('TkAgg')  # nopep8
 import matplotlib.pyplot as plt
 import planarity
+import thickness
+import planarity_test as p
 from docopt import docopt
 
 
@@ -26,3 +28,8 @@ if __name__ == '__main__':
         nx.draw_random(G)
         plt.axis('off')
         plt.savefig(output)
+    if(p.is_planar(G)):
+        print("Our algorithm says that the graph is planar")
+    else:
+        print("thickness:")
+        print(thickness.thickness(G))
