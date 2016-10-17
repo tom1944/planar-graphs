@@ -1,6 +1,7 @@
 import networkx as nx
 import planarity_test
 import math
+import copy
 
 
 def thickness(g):
@@ -68,36 +69,49 @@ class Partitions:
     def f(self):
         pass
 
-# Onderstaande iterator werkt niet
+
+# just to practice: determine all k-partitions of a set s
+def all_k_partitions_of(s, k):
+    assert len(s) >= k > 0
+    if k == 1:  # if we need only 1 part
+        return [[copy.deepcopy(s)]]
+    elif len(s) == k:  # as much parts as elements in the set
+        return [[[elem] for elem in s]]
+    else:
+        elem = s.pop()  # there are two possibilities for elem to appear in the partition: as sole part or
+        # as one of the other k parts:
+        result = []
+        for partition in all_k_partitions_of(s, k - 1):
+            partition.append([elem])
+            result.append(partition)
+        for partition in all_k_partitions_of(s, k):
+            for s2 in partition:
+                s2.append(elem)
+                result.append(copy.deepcopy(partition))
+                s2.remove(elem)
+        s.append(elem)
+        return result
+
+
+# Werkt! :D
 def partition_gen(s, k):  # s is a set, k is the number of sets(I call them parts) in the yielded partition
     assert len(s) >= k > 0
     if k == 1:  # if we need only 1 part
-        yield [s]
+        yield [copy.deepcopy(s)]
     elif len(s) == k:  # as much parts as elements in the set
         yield [[elem] for elem in s]
     else:
         elem = s.pop()  # there are two possibilities for elem to appear in the partition: as sole part or
-        # as one of the other k parts:
+        # as one of the other k parts(see https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind#Recurrence_relation):
         for partition in partition_gen(s, k-1):
-            # partition.append([elem])
-            # yield partition
-            # partition.remove([elem])
-            p2 = partition.copy()
-            p2.append([elem])
-            yield p2
+            partition.append([elem])
+            yield partition
         for partition in partition_gen(s, k):
-            # index = 0
-            # while index < k:
-            #     partition[index].append(elem)
-            #     yield partition
-            #     partition[index].remove(elem)
-            #     index += 1
-            index = 0
-            while index < k:
-                p2 = partition.copy()
-                p2[index].append(elem)
-                index += 1
-                yield p2
+            for s2 in partition:
+                s2.append(elem)
+                yield copy.deepcopy(partition)
+                s2.remove(elem)
+        s.append(elem)
 
 
 """"
@@ -168,11 +182,25 @@ def recursive_thickness(g, partition, thickness_until_now):
 d = dict()
 
 
+def stirling(n, k):
+    if n == 0 and k == 0:
+        return 1
+    elif n == 0 or k == 0:
+        return 0
+    else:
+        return k * stirling(n - 1, k) + stirling(n - 1, k - 1)
+
 if __name__ == "__main__":
-    # for p in partition_gen(['a','b','c','d','e'], 3):
-    #     print(p)
-    g = nx.complete_graph(5)
-    print(thickness_merge(g))
+    for index, p in enumerate(partition_gen(['a','b','c','d','e'], 3)):
+        print(p)
+    # gr = nx.complete_graph(5)
+    # print(thickness_merge(gr))
+    # ll = all_k_partitions_of(['a','b','c','d','e'], 3)
+    # for pp in ll:
+    #     print(pp)
+    # print(len(ll))
+    # print(stirling(5, 3))
+
 
 """ OUTDATED hier had ik een verkeerde interpretatie van de thickness
 A worst-case time complexity analysis of the thickness
