@@ -166,7 +166,12 @@ if __name__ == "__main__":
     gr = nx.complete_bipartite_graph(2,3)
     gr2 = nx.complete_graph(9)
     print("hi")
-    print(thickness_bisection(gr2))
+    print(thickness_bisection(gr))
+K4 = nx.complete_graph(4)
+K5 = nx.complete_graph(5)
+K8 = nx.complete_graph(8)
+K_3_3 = nx.complete_bipartite_graph(3,3)
+W7 = nx.wheel_graph(7)
 
 
 """ OUTDATED hier had ik een verkeerde interpretatie van de thickness
