@@ -162,16 +162,23 @@ def stirling(n, k):  # usefull to test the partition generator
     else:
         return k * stirling(n - 1, k) + stirling(n - 1, k - 1)
 
-if __name__ == "__main__":
-    gr = nx.complete_bipartite_graph(2,3)
-    gr2 = nx.complete_graph(9)
-    print("hi")
-    print(thickness_bisection(gr))
 K4 = nx.complete_graph(4)
 K5 = nx.complete_graph(5)
 K8 = nx.complete_graph(8)
 K_3_3 = nx.complete_bipartite_graph(3,3)
 W7 = nx.wheel_graph(7)
+
+if __name__ == "__main__":
+    print("thickness of K4:")
+    print(str(thickness(K4)))
+    print("thickness of K5:")
+    print(str(thickness(K5)))
+    print("thickness of K(3,3):")
+    print(str(thickness(K_3_3)))
+    print("thickness of wheel graph W7:")
+    print(str(thickness(W7)))
+
+
 
 
 """ OUTDATED hier had ik een verkeerde interpretatie van de thickness
